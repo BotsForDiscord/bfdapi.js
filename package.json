@@ -1,0 +1,34 @@
+{
+  "name": "bfdapi.js",
+  "version": "1.0.0",
+  "description": "The official Bots for Discord API wrapper written in Javascript.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BotsForDiscord/bfdapi.js.git"
+  },
+  "keywords": [
+    "bot",
+    "list",
+    "discord",
+    "discord-js",
+    "api-wrapper"
+  ],
+  "author": "Donovan_DMC",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/BotsForDiscord/bfdapi.js/issues"
+  },
+  "homepage": "https://github.com/BotsForDiscord/bfdapi.js#readme",
+  "dependencies": {
+    "events": "^3.0.0",
+    "request": "^2.88.0",
+    "util": "^0.11.1"
+  }
+}
