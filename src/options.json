@@ -1,0 +1,6 @@
+{
+    "autoPostMin": 6e4,
+    "autoPostDefault": 3e5,
+    "autoPostMax": 864e5,
+    "apiBase": "https://botsfordiscord.com/api"
+}
