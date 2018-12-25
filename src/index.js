@@ -93,7 +93,7 @@ class BFDAPI extends EventEmitter {
     /**
      * Post guild count
      * @param {Number=} guildCount count to post
-     * @param {Number=|String=} id bot id to post for
+     * @param {(Number=|String=)} id bot id to post for
      * @returns {object} some info on the posting
      */
     async postCount(server_count = this._hasClient ? this.clientOrId.guilds.size : null,id = this._hasClient ? this.clientOrId.user.id : this.clientOrId) {
