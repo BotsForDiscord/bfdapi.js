@@ -59,7 +59,7 @@ class BFDAPI extends EventEmitter {
     async _apiRequest(path = "/",method = "GET",body = {},headers = {}, clean = true, encoding = "UTF-8") {
         return this.request(`${this.opt.apiBase}${path}`,{
             method: method.toLowerCase(),
-            body: JSON.Stringify(body),
+            body: JSON.stringify(body),
             headers: Object.assign({
                 Authorization: this.apiToken,
                 "Content-Type": "application/json",
