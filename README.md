@@ -2,15 +2,15 @@
 The official Bots for Discord API wrapper written in Javascript.
 
 **Table Of Contents**
-* [Posting with client & Autopost](#example-usage-with-client)
-* [posting without client](#example-usage-without-client)
-* [other methods](#you-can-also-fetch-other-information-from-the-api)
+*  [Posting with client & Autopost](#example-usage-with-client)
+*  [posting without client](#example-usage-without-client)
+*  [other methods](#you-can-also-fetch-other-information-from-the-api)
 ## How to Install
 `npm i bfdapi.js`
 
 ## Documentation
 
-#### example usage with client:
+### example usage with client
 ```js
 const Discord = require("discord.js"),
     client = new Discord.Client(),
@@ -24,18 +24,28 @@ client.on("ready",()=>{
 client.login("token");
 ```
 
-#### example usage without client:
+### example usage without client
 ```js
 const BFDAPI = require("bfdapi.js"),
     // auto posting is not available with this
     bfd = new BFDAPI("client id","bfd api token");
+    // see api methods for how to post guild counts
 ```
 
 ### API Methods
 
-##### You can also fetch other information from the api:
+#### You can also fetch other information from the api
 
-##### Post count manually
+**Methods**
+*  [Post guild count manually](#post-guild-count-manually)
+*  [Get info about bots](#get-info-about-bots)
+*  [Get bot widget](#get-bot-widget)
+*  [Get user info](#get-user-info)
+*  [Get user bots](#get-user-bots)
+*  [Pause autoposting](#pause-autoposting)
+*  [Resume autoposting](#resume-autoposting)
+
+##### Post guild count manually
 `postCount(guildCount,id)`
 ```js
 const BFDAPI = require("bfdapi.js"),

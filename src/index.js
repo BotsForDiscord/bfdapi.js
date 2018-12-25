@@ -26,7 +26,7 @@ class BFDAPI extends EventEmitter {
             autoPost,
             autoPostInterval,
             shardSupport
-        }
+        };
 
         if(this._hasClient && this.options.autoPost) this.startAutoPost();
     }
@@ -76,7 +76,7 @@ class BFDAPI extends EventEmitter {
      * @returns {Number} Returns guild count
      */
     async _autopost(cl=this) {       
-        var count = cl.options.shardSupport ?
+        var server_count = cl.options.shardSupport ?
         ![null,undefined,""].includes(cl.clientOrId.shard) ?
         typeof cl.clientOrId.shard.fetchClientValues !== "undefined" ? 
         cl.clientOrId.shard.fetchClientValues("guilds.size").reduce((a, b) => a + b, 0) :
@@ -85,10 +85,10 @@ class BFDAPI extends EventEmitter {
         cl.clientOrId.guilds.size :
         cl.clientOrId.guilds.size :
         cl.clientOrId.guilds.size;
-        return cl._apiRequest(`/bot/${cl.clientOrId.user.id}`,"POST",{server_count:count})
+        return cl._apiRequest(`/bot/${cl.clientOrId.user.id}`,"POST",{server_count})
         .then(req => req.status === 200 ? cl.emit("post",cl.clientOrId.guilds.size) : cl.emit("error",req.body))
         .then(count);
-    };
+    }
 
     /**
      * Post guild count
@@ -96,11 +96,11 @@ class BFDAPI extends EventEmitter {
      * @param {Number=|String=} id bot id to post for
      * @returns {object} some info on the posting
      */
-    async postCount(guildCount = this._hasClient ? this.clientOrId.guilds.size : null,id = this._hasClient ? this.clientOrId.user.id : this.clientOrId) {
-        if([undefined,null,NaN,""].includes(guildCount) && !this._hasClient) throw new TypeError("missing/invalid guild count.");
+    async postCount(server_count = this._hasClient ? this.clientOrId.guilds.size : null,id = this._hasClient ? this.clientOrId.user.id : this.clientOrId) {
+        if([undefined,null,NaN,""].includes(server_count) && !this._hasClient) throw new TypeError("missing/invalid guild count.");
         if(!id) throw new TypeError("missing/invalid client id");
-        return this._apiRequest(`/bot/${id}`,"POST",{server_count:guildCount})
-        .then(req => req.status === 200 ? {success: true, count: guildCount, id} : {success: false, status: req.status, body: req.body, id})
+        return this._apiRequest(`/bot/${id}`,"POST",{server_count})
+        .then(req => req.status === 200 ? {success: true, count: guildCount, id} : {success: false, status: req.status, body: req.body, id});
     }
 
     /**
@@ -149,7 +149,7 @@ class BFDAPI extends EventEmitter {
     async getUserBots(id) {
         if(!id) throw new TypeError("missing/invalid id");
         return this._apiRequest(`/user/${id}/bots`,"GET")
-        .then(req => req.status === 200 ? {success: true, id, data: req.body} : {success: false, status: req.status, body: req.body, id})
+        .then(req => req.status === 200 ? {success: true, id, data: req.body} : {success: false, status: req.status, body: req.body, id});
     }
 
     /**
