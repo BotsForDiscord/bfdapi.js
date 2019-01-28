@@ -130,7 +130,7 @@ client.on("ready",()=>{
         if(bfd.pauseAutoPost()) {
             console.log("paused");
             setTimeout(()=>{
-                if(bfd.resumeAutoPost())  console.log("
+                if(bfd.resumeAutoPost())  console.log("resumed");
             },5e3);
         }
     },5e3);
