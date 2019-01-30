@@ -1,6 +1,6 @@
 {
   "name": "bfdapi.js",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "The official Bots for Discord API wrapper written in Javascript.",
   "main": "index.js",
   "directories": {
