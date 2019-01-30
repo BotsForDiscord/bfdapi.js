@@ -100,7 +100,7 @@ class BFDAPI extends EventEmitter {
         if([undefined,null,NaN,""].includes(server_count) && !this._hasClient) throw new TypeError("missing/invalid guild count.");
         if(!id) throw new TypeError("missing/invalid client id");
         return this._apiRequest(`/bot/${id}`,"POST",{server_count})
-        .then(req => req.status === 200 ? {success: true, count: guildCount, id} : {success: false, status: req.status, body: req.body, id});
+        .then(req => req.status === 200 ? {success: true, count: server_count, id} : {success: false, status: req.status, body: req.body, id});
     }
 
     /**
