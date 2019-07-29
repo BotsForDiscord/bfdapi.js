@@ -1,6 +1,6 @@
 {
   "name": "bfdapi.js",
-  "version": "2.0.01",
+  "version": "2.0.2",
   "description": "Official javascript wrapper for the botsfordiscord api.",
   "main": "index.js",
   "scripts": {
