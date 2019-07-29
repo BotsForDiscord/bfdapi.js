@@ -1,9 +1,9 @@
 This is a module for interacting with [Bots For Discord](https://botsfordiscord.com)'s [api](https://docs.botsfordiscord.com).
 
-*) You must have a bot listed on [Bots For Discord](https://botsfordiscord.com), and have an api key to use this module.
-*) This module does not have auto posting features.
-*) This module does not have a way to handle vote webhooks (this is your job to handle, not ours!).
-*) You cannot provide a Discord.JS/Eris client in replacment of your client id.
+#### You must have a bot listed on [Bots For Discord](https://botsfordiscord.com), and have an api key to use this module.
+#### This module does not have auto posting features.
+#### This module does not have a way to handle vote webhooks (this is your job to handle, not ours!).
+#### You cannot provide a Discord.JS/Eris client in replacment of your client id.
 
 examples:
 
