@@ -1,188 +1,480 @@
-const EventEmitter = require("events"),
-    util = require("util"),
-    request = util.promisify(require("request")),
-    opt = require("./options");
+const EventEmitter = require("eventemitter3");
+const phin = require("phin");
+const BFDAPIError = require("./BFDAPIError");
 
 class BFDAPI extends EventEmitter {
-    /**
-     * Create new BFDAPI instance
-     * @param {any} clientOrId Client instance or bot id
-     * @param {String} apiToken Bots For Discord api token
-     * @param {Boolean} autoPost Enable or disable auto positing
-     * @param {Number} autoPostInterval auto post interval
-     * @param {Boolean} shardSupport support sharding (tested d.js internal & manager)
-     */
-    constructor(clientOrId,apiToken,autoPost,autoPostInterval,shardSupport) {
-        super();
-        this.opt = opt;
-        this.request = request;
-        if(!clientOrId) throw new TypeError("missing client or id.");
-        if(!apiToken) throw new TypeError("missing api token.");
-        this.clientOrId = clientOrId;
-        this.apiToken = apiToken;
-        this._hasClient = this._isLib("discord.js",clientOrId) || this._isLib("eris",clientOrId);
-        if(autoPost && !autoPostInterval) var autoPostInterval = this.opt.autoPostDefault;
-        this.options = {
-            autoPost,
-            autoPostInterval,
-            shardSupport
-        };
+	/**
+	 * main class
+	 * @param {string} id - the clients id
+	 * @param {string} token - the clients api token
+	 * @param {object} options - the clients options 
+	 */
+	constructor(id, token, options) {
+		if (!id) throw new TypeError("missing client id");
+		if (!token) throw new TypeError("missing token");
+		if (!options) options = {};
 
-        if(this._hasClient && this.options.autoPost) this.startAutoPost();
-    }
+		super();
 
-    /**
-     * Check if something is a library
-     * @param {String} library library to check for
-     * @param {any} client possible client to check
-     * @returns {Boolean} 
-     */
-    _isLib(library, client){
-        try {
-            const lib = require.cache[require.resolve(library)];
-            return lib && client instanceof lib.exports.Client;
-        } catch (e) {
-            return false;
-        }
-    }
+		this._id = id;
+		this._token = token;
+		this._options = options;
+	}
 
-    /**
-     * Send a request to the bots for discord api
-     * @param {String=/} path api path
-     * @param {String=GET} method request method to use
-     * @param {object={}} body body to send with request
-     * @param {object={}} headers additional headers to send
-     * @param {clean=true} clean make input easier to parse when returning
-     * @param {String=UTF-8} encoding encoding of what's returned (null for images)
-     * @returns {Promise} Result of promise will be the api response
-     */
-    async _apiRequest(path = "/",method = "GET",body = {},headers = {}, clean = true, encoding = "UTF-8") {
-        return this.request(`${this.opt.apiBase}${path}`,{
-            method: method.toLowerCase(),
-            body: JSON.stringify(body),
-            headers: Object.assign({
-                Authorization: this.apiToken,
-                "Content-Type": "application/json",
-                encoding
-            },headers)
-        })
-        .then(req => !clean ? req : {status:req.statusCode,body:JSON.parse(req.body)})
-        .catch(req => !clean ? req : {status:req.statusCode,body:JSON.parse(req.body)});
-    }
+	get id() {
+		return this._id;
+	}
 
-    /**
-     * autopost function
-     * @param {BFDAPI=this} cl bfdapi instance
-     * @returns {Number} Returns guild count
-     */
-    async _autopost(cl=this) {       
-        var server_count = cl.options.shardSupport ?
-        ![null,undefined,""].includes(cl.clientOrId.shard) ?
-        typeof cl.clientOrId.shard.fetchClientValues !== "undefined" ? 
-        cl.clientOrId.shard.fetchClientValues("guilds.size").reduce((a, b) => a + b, 0) :
-        typeof cl.clientOrId.shard.broadcastEval !== "undefined" ?
-        cl.clientOrId.shard.broadcastEval("this,guilds.size").reduce((a, b) => a + b, 0) :
-        cl.clientOrId.guilds.size :
-        cl.clientOrId.guilds.size :
-        cl.clientOrId.guilds.size;
-        return cl._apiRequest(`/bot/${cl.clientOrId.user.id}`,"POST",{server_count})
-        .then(req => req.status === 200 ? cl.emit("post",cl.clientOrId.guilds.size) : cl.emit("error",req.body))
-        .then(count);
-    }
+	get token() {
+		return this._token;
+	}
 
-    /**
-     * Post guild count
-     * @param {Number=} guildCount count to post
-     * @param {(Number=|String=)} id bot id to post for
-     * @returns {object} some info on the posting
-     */
-    async postCount(server_count = this._hasClient ? this.clientOrId.guilds.size : null,id = this._hasClient ? this.clientOrId.user.id : this.clientOrId) {
-        if([undefined,null,NaN,""].includes(server_count) && !this._hasClient) throw new TypeError("missing/invalid guild count.");
-        if(!id) throw new TypeError("missing/invalid client id");
-        return this._apiRequest(`/bot/${id}`,"POST",{server_count})
-        .then(req => req.status === 200 ? {success: true, count: server_count, id} : {success: false, status: req.status, body: req.body, id});
-    }
+	get options() {
+		return this._options;
+	}
 
-    /**
-     * Get a bots info from the api
-     * @param {(Number=|String=)} id the bots id
-     */
-    async getBotInfo(id = this._hasClient ? this.clientOrId.user.id : this.clientOrId) {
-        if(!id) throw new TypeError("missing/invalid id");
-        return this._apiRequest(`/bot/${id}`,"GET")
-        .then(req => req.status === 200 ? {success: true, id, data: req.body} : {success: false, status: req.status, body: req.body, id})
-    }
+	/**
+	 * Fetches a bots vote info, will return null if the bot does not exist
+	 * @param {string} [id] - client id, if different from current client id
+	 * @param {string} [auth] - different authorization to use, if needed
+	 * @returns {Promise<APIBotVotes>} 
+	 */
+	async getBotVotes(id = this.id, auth = this.token) {
+		if (!id) throw new TypeError("missing bot id");
+		return phin({
+			url: `https://botsfordiscord.com/api/bot/${id}/votes`,
+			headers: {
+				"Authorization": auth
+			},
+			parse: "json"
+		}).then((b) => {
+			if (b.statusCode !== 200) switch (b.statusCode) {
+				case 400:
+				case 401:
+				case 403:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "request error"
+					});
+					break;
 
-    get getBot() {
-        return this.getBotInfo;
-    }
+				case 404:
+					return null;
+					break;
 
-    /**
-     * Get a bots widget
-     * @param {(Number=|String=)} id id of the bot to get the widget for
-     * @param {Boolean=true} darkTheme toggle widget using dark theme
-     * @returns {object} bot widget svg
-     */
-    async getBotWidget(id = this._hasClient ? this.clientOrId.user.id : this.clientOrId, darkTheme = true) {
-        if(!id) throw new TypeError("missing/invalid id");
-        return this._apiRequest(`/bot/${id}/widget${darkTheme?"?theme=dark":""}`,"GET",{},{},false,null)
-        .then(req => req.body);
-    }
+				case 500:
+				case 502:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "server error"
+					});
+					break;
 
-    /**
-     * get a users info from the api
-     * @param {(String|Number)} id id of the user who you want to get info on
-     */
-    async getUserInfo(id) {
-        if(!id) throw new TypeError("missing/invalid id");
-        return this._apiRequest(`/user/${id}`,"GET")
-        .then(req => req.status === 200 ? {success: true, id, data: req.body} : {success: false, status: req.status, body: req.body, id})
-    }
+				default:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "unknown"
+					});
+			}
 
-    get getUser() {
-        return this.getUserInfo;
-    }
-    /**
-     * get a users bots
-     * @param {(Number=|String=)} id id of the user whose bots you want to get
-     */
-    async getUserBots(id) {
-        if(!id) throw new TypeError("missing/invalid id");
-        return this._apiRequest(`/user/${id}/bots`,"GET")
-        .then(req => req.status === 200 ? {success: true, id, data: req.body} : {success: false, status: req.status, body: req.body, id});
-    }
+			return {
+				hasVoted: b.body.hasVoted || [],
+				hasVoted24: b.body.hasVoted24 || [],
+				votes: b.body.votes || 0,
+				votes24: b.body.votes24 || 0,
+				votesMonth: b.body.votesMonth || 0
+			};
+		}).catch(err => {
+			throw err;
+		});
+	}
 
-    /**
-     * stop auto posting temporarily
-     * @returns {Boolean}
-     */
-    pauseAutoPost() {
-        if(typeof this._autoInterval === "undefined") return false;
-        clearInterval(this._autoInterval);
-        delete this._autoInterval;
-        return true;
-    }
+	/**
+	 * Fetches a bots api info, will return null if the bot does not exist
+	 * @param {string} [id] - client id, if different from current client id
+	 * @returns {Promise<APIBot>}
+	 */
+	async getBot(id = this.id) {
+		if (!id) throw new TypeError("missing bot id");
+		return phin({
+			url: `https://botsfordiscord.com/api/bot/${id}`,
+			parse: "json"
+		}).then((b) => {
+			if (b.statusCode !== 200) switch (b.statusCode) {
+				case 400:
+				case 401:
+				case 403:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "request error"
+					});
+					break;
 
-    get stopAutoPost() {
-        return this.pauseAutoPost;
-    }
+				case 404:
+					return null;
+					break;
 
-    /**
-     * Resume auto posting after pausing it
-     * @returns {Boolean}
-     */
-    resumeAutoPost() {
-        if(this.options.autoPostInterval < this.opt.autoPostMin) throw new Error("auto post interval is too low (less than 1 minute in ms)");
-        if(this.options.autoPostInterval > this.opt.autoPostMax) throw new Error("auto post interval is too high (more than 24 hours in ms)");
-        this._autopost(this);
-        if(this._autoInterval) delete this._autoInterval;
-        this._autoInterval = setInterval(this._autopost,this.options.autoPostInterval,this);
-        return true;
-    }
+				case 500:
+				case 502:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "server error"
+					});
+					break;
 
-    get startAutoPost() {
-        return this.resumeAutoPost;
-    }
+				default:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "unknown"
+					});
+			}
+
+			return {
+				approved: b.body.approved || false,
+				approvedTime: b.body.approvedTime || "",
+				avatar: b.body.avatar || "",
+				clientId: b.body.avatar || b.body.id || "0",
+				color: b.body.color || "",
+				discrim: b.body.discrim || "",
+				featured: b.body.featured || false,
+				github: b.body.github || "",
+				id: b.body.id || id,
+				invite: b.body.invite || `https://discordapp.com/oauth2/authorize?client_id=${b.body.id || id}&scope=bot`,
+				library: b.body.library || "",
+				name: b.body.name,
+				owner: b.body.owner,
+				owners: b.body.owners || [],
+				parter: b.body.partner || false,
+				prefix: b.body.prefix || "",
+				server_count: b.body.server_count || 0,
+				short_desc: b.body.short_desc,
+				status: b.body.status || "offline",
+				support_server: b.body.support_server || "",
+				tag: b.body.tag,
+				tags: b.body.tags || [],
+				vanityUrl: b.body.vanityUrl || "",
+				verified: b.body.verified || false,
+				votes: b.body.votes || 0,
+				votes24: b.body.votes24 || 0,
+				votesMonth: b.body.votesMonth || 0,
+				website_bot: b.body.website_bot || false
+			};
+		}).catch(err => {
+			throw err;
+		});
+	}
+
+	/**
+	 * Fetches the api info on a user, returns null if the user was not found
+	 * @param {string} id - the id of the user to fetch
+	 * @returns {Promise<APIUser>}
+	 */
+	async getUser(id) {
+		if (!id) throw new TypeError("missing user id");
+		return phin({
+			url: `https://botsfordiscord.com/api/user/${id}`,
+			parse: "json"
+		}).then((u) => {
+			if (u.statusCode !== 200) switch (u.statusCode) {
+				case 400:
+				case 401:
+				case 403:
+					throw new BFDAPIError({
+						statusCode: u.statusCode,
+						body: u.body,
+						type: "request error"
+					});
+					break;
+
+				case 404:
+					return null;
+					break;
+
+				case 500:
+				case 502:
+					throw new BFDAPIError({
+						statusCode: u.statusCode,
+						body: u.body,
+						type: "server error"
+					});
+					break;
+
+				default:
+					throw new BFDAPIError({
+						statusCode: u.statusCode,
+						body: u.body,
+						type: "unknown"
+					});
+			}
+
+			return {
+				avatar: u.body.avatar || "",
+				background: u.body.background || "",
+				bio: u.body.bio || "",
+				discrim: u.body.discrim || "",
+				flags: u.body.flags || 0,
+				house: u.body.house || "",
+				id: u.body.id || id,
+				isAdmin: u.body.isAdmin || false,
+				isBeta: u.body.isBeta || false,
+				isJrMod: u.body.isJrMod || false,
+				isMod: u.body.isMod || false,
+				isPartner: u.body.isPartner || false,
+				isVerifiedDev: u.body.isVerifiedDev || false,
+				name: u.body.name || "",
+				status: u.body.status || "offline",
+				tag: u.body.tag || "",
+				username: u.body.username || "",
+				website: u.body.website || ""
+			};
+		}).catch(err => {
+			throw err;
+		});
+	}
+
+	/**
+	 * Fetches the bots of a user, returns null if the user was not found
+	 * @param {string} id - the id of the user you want to get the bots of
+	 * @returns {Promise<APIUserBots>}
+	 */
+	async getUserBots(id) {
+		if (!id) throw new TypeError("missing user id");
+		return phin({
+			url: `https://botsfordiscord.com/api/users/${id}/bots`,
+			headers: {
+				"Authorization": this.token
+			},
+			parse: "json"
+		}).then((b) => {
+			if (b.statusCode !== 200) switch (b.statusCode) {
+				case 400:
+				case 401:
+				case 403:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "request error"
+					});
+					break;
+
+				case 404:
+					return null;
+					break;
+
+				case 500:
+				case 502:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "server error"
+					});
+					break;
+
+				default:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body,
+						type: "unknown"
+					});
+			};
+
+			if (b.body.bots.length === 0) return [];
+
+			return Promise.all(b.body.bots.map(async (b) => this.getBot(b)));
+		}).catch(err => {
+			throw err;
+		});
+	}
+
+	/**
+	 * Fetches the bots api widget, or returns null if the bot was not found
+	 * @param {string} id - the id of the bot to fetch the widget of
+	 * @returns {Promise<string>}
+	 */
+
+	async getBotWidget(id = this.id) {
+		if (!id) throw new TypeError("missing bot id");
+		return phin({
+			url: `https://botsfordiscord.com/api/bot/${id}/widget`,
+			parse: "none"
+		}).then((b) => {
+			if (b.statusCode !== 200) switch (b.statusCode) {
+				case 400:
+				case 401:
+				case 403:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body.toString(),
+						type: "request error"
+					});
+					break;
+
+				case 404:
+					return null;
+					break;
+
+				case 500:
+				case 502:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body.toString(),
+						type: "server error"
+					});
+					break;
+
+				default:
+					throw new BFDAPIError({
+						statusCode: b.statusCode,
+						body: b.body.toString(),
+						type: "unknown"
+					});
+			};
+
+			return b.body.toString();
+		}).catch(err => {
+			throw err;
+		});
+	}
+
+	/**
+	 * post your bots server count stats
+	 * @param {number} server_count - the number of servers your bot is in
+	 * @param {string} [id] - the id to post stats to, if different from the current id
+	 * @param {string} [auth] - different authorization to use, if needed
+	 * @returns {Promise<{ message: string, success: boolean }>}
+	 */
+	async postServerCount(server_count = 0, id = this.id, auth = this.token) {
+		return phin({
+			method: "POST",
+			url: `https://botsfordiscord.com/api/bot/${id}`,
+			data: {
+				server_count
+			},
+			headers: {
+				"Authorization": auth,
+				"Content-Type": "application/json"
+			},
+			parse: "json"
+		}).then((p) => {
+			if (p.statusCode !== 200) switch (p.statusCode) {
+				case 400:
+				case 401:
+				case 403:
+					throw new BFDAPIError({
+						statusCode: p.statusCode,
+						body: p.body,
+						type: "request error"
+					});
+					break;
+
+				case 404:
+					return null;
+					break;
+
+				case 500:
+				case 502:
+					throw new BFDAPIError({
+						statusCode: p.statusCode,
+						body: p.body,
+						type: "server error"
+					});
+					break;
+
+				default:
+					throw new BFDAPIError({
+						statusCode: p.statusCode,
+						body: p.body,
+						type: "unknown"
+					});
+			}
+
+			return {
+				message: p.body.message || "",
+				success: p.statusCode === 200
+			};
+		}).catch(err => {
+			throw err;
+		});
+	}
 }
 
 module.exports = BFDAPI;
+
+/**
+ * @typedef {object} APIBot
+ * @prop {boolean} approved
+ * @prop {string} approvedTime
+ * @prop {string} avatar
+ * @prop {string} [clientId]
+ * @prop {string} color
+ * @prop {string} discrim
+ * @prop {boolean} featured
+ * @prop {string} [github]
+ * @prop {string} id
+ * @prop {string} invite
+ * @prop {string} [library]
+ * @prop {string} name
+ * @prop {string} owner
+ * @prop {string[]} [owners]
+ * @prop {boolean} parter
+ * @prop {string} prefix
+ * @prop {number} [server_count]
+ * @prop {string} [short_desc]
+ * @prop {"online" | "idle" | "dnd" | "offline"} [status]
+ * @prop {string} [support_server]
+ * @prop {string} tag
+ * @prop {string[]} [tags]
+ * @prop {string} [vanityUrl]
+ * @prop {boolean} verified
+ * @prop {number} votes
+ * @prop {number} votes24
+ * @prop {number} votesMonth
+ * @prop {boolean} website_bot
+ */
+
+/**
+ * @typedef {object} APIUser
+ * @prop {string} [avatar]
+ * @prop {string} [background]
+ * @prop {string} [bio]
+ * @prop {string} discrim
+ * @prop {number} [flags]
+ * @prop {"courage" | "glory" | "serenity"} [house]
+ * @prop {string} id
+ * @prop {boolean} isAdmin
+ * @prop {boolean} isBeta
+ * @prop {boolean} isJrMod
+ * @prop {boolean} isMod
+ * @prop {boolean} isPartner
+ * @prop {boolean} isVerifiedDev
+ * @prop {string} name
+ * @prop {"online" | "idle" | "dnd" | "offline"} [status]
+ * @prop {string} tag
+ * @prop {string} username
+ * @prop {string} [website]
+ */
+
+/**
+ * @typedef {object} APIUserBots
+ * @prop {APIBot[]} [bots]
+ */
+
+/**
+ * @typedef {object} APIBotVotes
+ * @prop {string[]} hasVoted
+ * @prop {string[]} hasVoted24
+ * @prop {number} votes
+ * @prop {number} votes24
+ * @prop {number} votesMonth
+ */
+
+/**
+ * @prop {string} token - the current api token
+ * @prop {object} options - the options for the current instance
+ */
