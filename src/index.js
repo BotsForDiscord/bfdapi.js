@@ -150,7 +150,7 @@ class BFDAPI extends EventEmitter {
 				name: b.body.name,
 				owner: b.body.owner,
 				owners: b.body.owners || [],
-				parter: b.body.partner || false,
+				partner: b.body.partner || false,
 				prefix: b.body.prefix || "",
 				server_count: b.body.server_count || 0,
 				short_desc: b.body.short_desc,
