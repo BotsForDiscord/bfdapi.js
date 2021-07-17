@@ -42,7 +42,7 @@ class BFDAPI extends EventEmitter {
 	async getBotVotes(id = this.id, auth = this.token) {
 		if (!id) throw new TypeError("missing bot id");
 		return phin({
-			url: `https://botsfordiscord.com/api/bot/${id}/votes`,
+			url: `https://discords.com/bots/api/bot/${id}/votes`,
 			headers: {
 				"Authorization": auth
 			},
@@ -100,7 +100,7 @@ class BFDAPI extends EventEmitter {
 	async getBot(id = this.id) {
 		if (!id) throw new TypeError("missing bot id");
 		return phin({
-			url: `https://botsfordiscord.com/api/bot/${id}`,
+			url: `https://discords.com/bots/api/bot/${id}`,
 			parse: "json"
 		}).then((b) => {
 			if (b.statusCode !== 200) switch (b.statusCode) {
@@ -178,7 +178,7 @@ class BFDAPI extends EventEmitter {
 	async getUser(id) {
 		if (!id) throw new TypeError("missing user id");
 		return phin({
-			url: `https://botsfordiscord.com/api/user/${id}`,
+			url: `https://discords.com/bots/api/user/${id}`,
 			parse: "json"
 		}).then((u) => {
 			if (u.statusCode !== 200) switch (u.statusCode) {
@@ -246,7 +246,7 @@ class BFDAPI extends EventEmitter {
 	async getUserBots(id) {
 		if (!id) throw new TypeError("missing user id");
 		return phin({
-			url: `https://botsfordiscord.com/api/users/${id}/bots`,
+			url: `https://discords.com/bots/api/users/${id}/bots`,
 			headers: {
 				"Authorization": this.token
 			},
@@ -301,7 +301,7 @@ class BFDAPI extends EventEmitter {
 	async getBotWidget(id = this.id) {
 		if (!id) throw new TypeError("missing bot id");
 		return phin({
-			url: `https://botsfordiscord.com/api/bot/${id}/widget`,
+			url: `https://discords.com/bots/api/bot/${id}/widget`,
 			parse: "none"
 		}).then((b) => {
 			if (b.statusCode !== 200) switch (b.statusCode) {
@@ -352,7 +352,7 @@ class BFDAPI extends EventEmitter {
 	async postServerCount(server_count = 0, id = this.id, auth = this.token) {
 		return phin({
 			method: "POST",
-			url: `https://botsfordiscord.com/api/bot/${id}`,
+			url: `https://discords.com/bots/api/bot/${id}`,
 			data: {
 				server_count
 			},
