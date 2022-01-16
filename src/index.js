@@ -1,4 +1,5 @@
 const EventEmitter = require("eventemitter3");
+const phin = require("phin");
 const BFDAPIError = require("./BFDAPIError");
 
 class BFDAPI extends EventEmitter {
@@ -400,6 +401,71 @@ class BFDAPI extends EventEmitter {
 		}).catch(err => {
 			throw err;
 		});
+	}
+
+	/**
+	 * post your bots server count stats automatically in an interval
+	 * @param {number} server_count - the number of servers your bot is in
+	 * @param {number} interval - the interval at which the server count should post, in minutes
+	 * @param {string} [id] - the id to post stats to, if different from the current id
+	 * @param {string} [auth] - different authorization to use, if needed
+	 * @returns {Promise<{ message: string, success: boolean }>}
+	 */
+	async autopostServerCount(server_count = 0, interval = 60, id = this.id, auth = this.token) {
+		setInterval(() => {
+			return phin({
+				method: "POST",
+				url: `https://discords.com/bots/api/bot/${id}`,
+				data: {
+					server_count
+				},
+				headers: {
+					"Authorization": auth,
+					"Content-Type": "application/json"
+				},
+				parse: "json"
+			}).then((p) => {
+				if (p.statusCode !== 200) switch (p.statusCode) {
+					case 400:
+					case 401:
+					case 403:
+						throw new BFDAPIError({
+							statusCode: p.statusCode,
+							body: p.body,
+							type: "request error"
+						});
+						break;
+
+					case 404:
+						return null;
+						break;
+
+					case 500:
+					case 502:
+						throw new BFDAPIError({
+							statusCode: p.statusCode,
+							body: p.body,
+							type: "server error"
+						});
+						break;
+
+					default:
+						throw new BFDAPIError({
+							statusCode: p.statusCode,
+							body: p.body,
+							type: "unknown"
+						});
+				}
+
+				return {
+					message: p.body.message || "",
+					success: p.statusCode === 200,
+				};
+			}).catch(err => {
+				throw err;
+			})
+		}, interval * 60000);
+		return "Auto-post started!"
 	}
 }
 
