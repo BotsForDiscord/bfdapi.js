@@ -9,7 +9,7 @@ examples:
 
 ### Posting Server Count
 ```javascript
-const BFDAPI = require("bfdapi.js");
+const { BFDAPI } = require("bfdapi.js");
 const bfd = new BFDAPI("client id","api token");
 
 bfd.postServerCount(5).then((res) => console.log(res));
@@ -19,7 +19,7 @@ bfd.postServerCount(5).then((res) => console.log(res));
 
 ### Get Bot Votes
 ```javascript
-const BFDAPI = require("bfdapi.js");
+const { BFDAPI } = require("bfdapi.js");
 const bfd = new BFDAPI("client id","api token");
 
 bfd.getBotVotes().then((res) => console.log(res));
@@ -30,7 +30,7 @@ bfd.getBotVotes().then((res) => console.log(res));
 
 ### Get Bot
 ```javascript
-const BFDAPI = require("bfdapi.js");
+const { BFDAPI } = require("bfdapi.js");
 const bfd = new BFDAPI("client id","api token");
 
 bfd.getBot("bot id").then((res) => console.log(res));
@@ -41,7 +41,7 @@ bfd.getBot("bot id").then((res) => console.log(res));
 
 ### Get User
 ```javascript
-const BFDAPI = require("bfdapi.js");
+const { BFDAPI } = require("bfdapi.js");
 const bfd = new BFDAPI("client id","api token");
 
 bfd.getUser("user id").then((res) => console.log(res));
@@ -52,7 +52,7 @@ bfd.getUser("user id").then((res) => console.log(res));
 
 ### Get User Bots
 ```javascript
-const BFDAPI = require("bfdapi.js");
+const { BFDAPI } = require("bfdapi.js");
 const bfd = new BFDAPI("client id","api token");
 
 bfd.getBot("bot id").then((res) => console.log(res));
@@ -61,12 +61,27 @@ bfd.getBot("bot id").then((res) => console.log(res));
 // if failed, it will throw an error
 ```
 
-## Get Bot Widget
+### Get Bot Widget
 ```javascript
-const BFDAPI = require("bfdapi.js");
+const { BFDAPI } = require("bfdapi.js");
 const bfd = new BFDAPI("client id","api token");
 
 bfd.getBotWidget().then((res) => console.log(res));
 // if successful: bot widget string
 // if failed, it will throw an error
+```
+
+### Listening for votes
+```javascript
+const { BFDAPI } = require("bfdapi.js");
+const bfd = new BFDAPI();
+
+// path defaults to /discordswebhook
+// port defaults to 3000
+bfd.createWebhookListener("secret", 3030, "/webhook");
+
+bfd.on("vote", (vote) => {
+    console.log(vote);
+    // vote: WebhookVote
+});
 ```
