@@ -1,9 +1,30 @@
-import { EventEmitter } from "eventemitter3";
+import { EventEmitter, type EventEmitterStatic } from "eventemitter3";
 import { request } from "undici";
 import type { HttpMethod } from "undici/types/dispatcher";
 import { version } from "../package.json";
 import { BFDAPIError } from "./BFDAPIError";
 import { URLSearchParams } from "node:url";
+import { createServer } from "node:http";
+
+declare module 'eventemitter3' {
+  class EventEmitterStatic {
+    public static on<E extends typeof EventEmitterStatic>(
+      eventEmitter: E,
+      eventName: 'vote',
+    ): AsyncIterableIterator<WebhookVote>;
+  }
+}
+
+export declare interface BFDAPI extends EventEmitterStatic {
+  on(event: "vote", listener: (vote: WebhookVote) => void): this;
+  on<S extends string | symbol>(
+    event: Exclude<S, 'vote'>,
+    listener: (...args: any[]) => void,
+  ): this;
+
+  emit(event: 'vote', vote: WebhookVote): boolean;
+  emit<S extends string | symbol>(event: Exclude<S, 'vote'>, ...args: unknown[]): boolean;
+}
 
 export class BFDAPI extends EventEmitter {
   public static baseUrl = "https://discords.com/api";
@@ -13,8 +34,54 @@ export class BFDAPI extends EventEmitter {
    * @param id - the clients id
    * @param token - the clients api token
    */
-  constructor(readonly id: string, readonly token: string) {
+  constructor();
+  constructor(id: string, token: string);
+  constructor(readonly id?: string, readonly token?: string) {
     super();
+  }
+
+  createWebhookListener(
+    secret: string,
+    port: number = 3000,
+    path: string = "/discordswebhook",
+    host: string = "localhost"
+  ) {
+    const server = createServer((req, res) => {
+      if (req.url !== path) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+
+      if (req.method !== "POST") {
+        res.writeHead(405);
+        res.end();
+        return;
+      }
+
+      if (req.headers["authorization"] !== secret) {
+        res.writeHead(401);
+        res.end();
+        return;
+      }
+
+      const body: string[] = [];
+      req.on("data", (chunk) => body.push(chunk.toString()));
+      req.on("end", () => {
+        try {
+          const data = JSON.parse(body.join(""));
+          this.emit("vote", data);
+          res.writeHead(200);
+          res.end();
+        } catch (e) {
+          res.writeHead(400);
+          res.end();
+        }
+      });
+    });
+
+    server.listen(port, host);
+    return server;
   }
 
   private async _request<T extends unknown = unknown>(
@@ -86,8 +153,8 @@ export class BFDAPI extends EventEmitter {
   async getBotVotes(): Promise<APIBotVotes | null>;
   async getBotVotes(id: string, auth: string): Promise<APIBotVotes | null>;
   async getBotVotes(
-    id: string = this.id,
-    auth: string = this.token
+    id: string = this.id!,
+    auth: string = this.token!
   ): Promise<APIBotVotes | null> {
     if (!id) throw new TypeError("missing bot id");
     if (!auth) throw new TypeError("missing auth token");
@@ -109,7 +176,7 @@ export class BFDAPI extends EventEmitter {
    * Fetches a bots api info, will return null if the bot does not exist
    * @param id - client id, if different from current client id
    */
-  async getBot(id: string = this.id): Promise<APIBot | null> {
+  async getBot(id: string = this.id!): Promise<APIBot | null> {
     if (!id) throw new TypeError("missing bot id");
     const res = await this._request<APIBot>("GET", `/bot/${id}`);
     if (!res) return null;
@@ -198,7 +265,7 @@ export class BFDAPI extends EventEmitter {
    * @param id - the id of the bot to fetch the widget of
    */
   async getBotWidget(
-    id: string = this.id,
+    id: string = this.id!,
     options?: { theme: "dark"; width: number }
   ): Promise<string | null> {
     if (!id) throw new TypeError("missing bot id");
@@ -219,8 +286,8 @@ export class BFDAPI extends EventEmitter {
    */
   async postServerCount(
     server_count: number = 0,
-    id: string = this.id,
-    auth: string = this.token
+    id: string = this.id!,
+    auth: string = this.token!
   ): Promise<string> {
     if (!id) throw new TypeError("missing bot id");
     if (!auth) throw new TypeError("missing auth token");
@@ -301,4 +368,17 @@ export interface APIBotVotes {
   votes: number;
   votes24: number;
   votesMonth: number;
+}
+
+export interface WebhookVote {
+  user: string;
+  bot: string;
+  votes: {
+    totalVotes: number;
+    votesMonth: number;
+    votes24: number;
+    hasVoted: string[];
+    voted24: string[];
+  };
+  type: "vote" | "test";
 }
