@@ -13,7 +13,7 @@ const BFDAPI = require("bfdapi.js");
 const bfd = new BFDAPI("client id","api token");
 
 bfd.postServerCount(5).then((res) => console.log(res));
-// if successful: { message: 'Server count successfully updated.', success: true }
+// if successful: { message: 'Server count successfully updated.' }
 // if failed, it will throw an error
 ```
 
@@ -35,7 +35,7 @@ const bfd = new BFDAPI("client id","api token");
 
 bfd.getBot("bot id").then((res) => console.log(res));
 // this will be different for every bot
-// if successful: <too large to put here>
+// if successful: APIBot
 // if failed, it will throw an error
 ```
 
@@ -46,7 +46,7 @@ const bfd = new BFDAPI("client id","api token");
 
 bfd.getUser("user id").then((res) => console.log(res));
 // this will be different for every bot
-// if successful: <too large to put here>
+// if successful: APIUser
 // if failed, it will throw an error
 ```
 
@@ -57,7 +57,7 @@ const bfd = new BFDAPI("client id","api token");
 
 bfd.getBot("bot id").then((res) => console.log(res));
 // this will be different for every user
-// if successful: array of Bots
+// if successful: array of APIBot
 // if failed, it will throw an error
 ```
 
